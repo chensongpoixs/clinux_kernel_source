@@ -1056,7 +1056,7 @@ static unsigned int sock_poll(struct file *file, poll_table *wait)
 		if (wait && (wait->_key & POLL_BUSY_LOOP))
 			sk_busy_loop(sock->sk, 1);
 	}
-
+	// af_smc.c -> smc_poll 判断socket是否可以读取数据(断开了就不可以读取数据了)
 	return busy_flag | sock->ops->poll(file, sock, wait);
 }
 

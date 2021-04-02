@@ -671,10 +671,7 @@ static inline void ep_pm_stay_awake_rcu(struct epitem *epi)
  *
  * Returns: The same integer error code returned by the @sproc callback.
  */
-static int ep_scan_ready_list(struct eventpoll *ep,
-			      int (*sproc)(struct eventpoll *,
-					   struct list_head *, void *),
-			      void *priv, int depth, bool ep_locked)
+static int ep_scan_ready_list(struct eventpoll *ep, int (*sproc)(struct eventpoll *, struct list_head *, void *), void *priv, int depth, bool ep_locked)
 {
 	int error, pwake = 0;
 	unsigned long flags;
@@ -878,7 +875,7 @@ static int ep_eventpoll_release(struct inode *inode, struct file *file)
 static inline unsigned int ep_item_poll(struct epitem *epi, poll_table *pt)
 {
 	pt->_key = epi->event.events;
-
+	// sock_poll
 	return epi->ffd.file->f_op->poll(epi->ffd.file, pt) & epi->event.events;
 }
 
@@ -977,7 +974,7 @@ static const struct file_operations eventpoll_fops = {
 	.show_fdinfo	= ep_show_fdinfo,
 #endif
 	.release	= ep_eventpoll_release,
-	.poll		= ep_eventpoll_poll,
+	.poll		= ep_eventpoll_poll, /* epoll_wait check read file */
 	.llseek		= noop_llseek,
 };
 
@@ -1592,8 +1589,8 @@ static int ep_send_events_proc(struct eventpoll *ep, struct list_head *head,
 	 * Items cannot vanish during the loop because ep_scan_ready_list() is
 	 * holding "mtx" during this call.
 	 */
-	for (eventcnt = 0, uevent = esed->events;
-	     !list_empty(head) && eventcnt < esed->maxevents;) {
+	for (eventcnt = 0, uevent = esed->events; !list_empty(head) && eventcnt < esed->maxevents;) 
+	{
 		epi = list_first_entry(head, struct epitem, rdllink);
 
 		/*
@@ -1622,9 +1619,10 @@ static int ep_send_events_proc(struct eventpoll *ep, struct list_head *head,
 		 * is holding "mtx", so no operations coming from userspace
 		 * can change the item.
 		 */
-		if (revents) {
-			if (__put_user(revents, &uevent->events) ||
-			    __put_user(epi->event.data, &uevent->data)) {
+		if (revents) 
+		{
+			if (__put_user(revents, &uevent->events) || __put_user(epi->event.data, &uevent->data)) 
+			{
 				list_add(&epi->rdllink, head);
 				ep_pm_stay_awake(epi);
 				return eventcnt ? eventcnt : -EFAULT;
@@ -1632,8 +1630,11 @@ static int ep_send_events_proc(struct eventpoll *ep, struct list_head *head,
 			eventcnt++;
 			uevent++;
 			if (epi->event.events & EPOLLONESHOT)
+			{
 				epi->event.events &= EP_PRIVATE_BITS;
-			else if (!(epi->event.events & EPOLLET)) {
+			}
+			else if (!(epi->event.events & EPOLLET)) 
+			{
 				/*
 				 * If this file has been added with Level
 				 * Trigger mode, we need to insert back inside
@@ -1951,8 +1952,7 @@ SYSCALL_DEFINE4(epoll_ctl, int, epfd, int, op, int, fd,
 	struct eventpoll *tep = NULL;
 
 	error = -EFAULT;
-	if (ep_op_has_event(op) &&
-	    copy_from_user(&epds, event, sizeof(struct epoll_event)))
+	if (ep_op_has_event(op) && copy_from_user(&epds, event, sizeof(struct epoll_event)))
 		goto error_return;
 
 	error = -EBADF;
@@ -1972,7 +1972,9 @@ SYSCALL_DEFINE4(epoll_ctl, int, epfd, int, op, int, fd,
 
 	/* Check if EPOLLWAKEUP is allowed */
 	if (ep_op_has_event(op))
+	{
 		ep_take_care_of_epollwakeup(&epds);
+	}
 
 	/*
 	 * We have to check that the file structure underneath the file descriptor
